@@ -85,7 +85,7 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
   local until=0; (( secs > 0 )) && until=$(( $(date +%s) + secs ))
   if mute_member "$chat" "$target" ${until:#0} >/dev/null; then
     local dur=$(html_esc "$dur_arg")
-    send_message "$chat" "🔇 Muted <code>$(html_esc "${target}")</code>${secs:+ for ${dur}}."
+    send_message "$chat" "🔇 Muted <code>$(html_esc "${target}")</code>${${secs:#0}:+ for ${dur}}."
     audit "$chat" "MUTE" "$actor" "$target" "$*"
   fi
 }
