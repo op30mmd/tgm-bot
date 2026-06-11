@@ -19,9 +19,8 @@ handle_new_members() {
       ( sleep $CAPTCHA_TIMEOUT
         local mem=$(get_member "$chat" "$uid")
         local st=$(print -r -- "$mem" | jq_get '.result.status')
-        local can_send=$(print -r -- "$mem" | jq_get '.result.can_send_messages')
-        log_info "CAPTCHA: timeout check user=$uid chat=$chat status=$st can_send=$can_send"
-        if [[ $st == "restricted" && $can_send == "false" ]]; then
+        log_info "CAPTCHA: timeout check user=$uid chat=$chat status=$st"
+        if [[ $st == "restricted" ]]; then
           log_info "CAPTCHA: user=$uid failed to solve, kicking"
           kick_member "$chat" "$uid"
           delete_message "$chat" "$mid"

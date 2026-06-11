@@ -12,8 +12,22 @@ run_filters() { # <chat> <uid> <mid> <text> <upd> -> return 1 to halt
     local w
   for w in ${(s:,:)bad}; do
     if [[ ${text:l} == *${w:l}* ]]; then
-      delete_message "$chat" "$mid"
-  warn_add "$chat" "$uid"
+        delete_message "$chat" "$mid"
+        local count=$(warn_add "$chat" "$uid")
+
+        if (( count >= WARN_LIMIT )); then
+          case $WARN_ACTION in
+            ban) ban_member "$chat" "$uid" ;;
+            kick) kick_member "$chat" "$uid" ;;
+            mute) mute_member "$chat" "$uid" ;;
+          esac
+          warn_reset "$chat" "$uid"
+          send_message "$chat" "⚠️ <code>$(html_esc "${uid}")</code> hit ${WARN_LIMIT} warnings → <b>${WARN_ACTION}</b>."
+          audit "$chat" "WARN_LIMIT/${WARN_ACTION}" "bot" "$uid" "banned word: $w"
+        else
+          send_message "$chat" "⚠️ Warned <code>$(html_esc "${uid}")</code> (${count}/${WARN_LIMIT}) for banned word."
+          audit "$chat" "WARN" "bot" "$uid" "banned word: $w"
+        fi
   return 1
     fi
   done
