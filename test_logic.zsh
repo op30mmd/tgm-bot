@@ -60,8 +60,19 @@ test_html_esc() {
     echo "test_html_esc passed"
 }
 
+test_user_resolve() {
+    export DATA_DIR=$(mktemp -d)
+    _store_init
+    user_save "123" "Alice"
+    [[ $(user_resolve "@Alice") == "123" ]] || return 1
+    [[ $(user_resolve "123") == "123" ]] || return 1
+    [[ $(user_resolve "@Bob") == "" ]] || return 1
+    echo "test_user_resolve passed"
+}
+
 test_json_str
 test_parse_duration
 test_is_owner
 test_store
 test_html_esc
+test_user_resolve
