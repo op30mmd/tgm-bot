@@ -12,14 +12,27 @@ tg_call() {
     http=${resp##*$'\n'}
     resp=${resp%$'\n'*}
     case $http in
-      200) print -r -- "$resp"; return 0 ;;
+      200)
+        print -r -- "$resp"
+        return 0
+        ;;
       429)
-        # Respect retry_after from Telegram
+        # Respect retry_after from Telegram (Rate limiting)
         local ra=$(print -r -- "$resp" | jq_get '.parameters.retry_after')
-        sleep ${ra:-3} ;;
-      *)
+        sleep ${ra:-3}
+        ;;
+      4[0-9][0-9])
+        # Permanent client errors (400 Bad Request, 403 Forbidden, etc.)
+        # Do not retry, as these will never succeed.
         log_warn "API ${method} -> HTTP ${http}: $(print -r -- "$resp" | jq_get '.description')"
-        sleep 2 ;;
+        print -r -- "$resp"
+        return 1
+        ;;
+      *)
+        # Network errors (000) or server-side issues (5xx) are retried
+        log_warn "API ${method} -> HTTP ${http}: $(print -r -- "$resp" | jq_get '.description')"
+        sleep 2
+        ;;
     esac
     (( attempt++ ))
   done
