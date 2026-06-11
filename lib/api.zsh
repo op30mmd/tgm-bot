@@ -52,8 +52,9 @@ mute_member() {   # mute_member <chat> <user> [until_unix]
 }
 
 unmute_member() {
-  tg_call restrictChatMember -d "chat_id=$1" -d "user_id=$2" \
-    --data-urlencode "permissions=$(perms_json 1)"
+  # unbanChatMember with only_if_banned=false (default) lifts ALL restrictions
+  # and restores status to "member". This is more reliable than restrictChatMember.
+  tg_call unbanChatMember -d "chat_id=$1" -d "user_id=$2" -d "only_if_banned=false"
 }
 
 kick_member() {   # ban then immediately unban = kick (can rejoin)
