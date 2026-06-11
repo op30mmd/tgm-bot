@@ -9,12 +9,15 @@ handle_callback() {
   case $data in
     captcha:*)
       local target=${data#captcha:}
+      log_info "CAPTCHA: button click from=$from target=$target chat=$chat"
       if [[ $from == $target ]]; then
         local mid=$(print -r -- "$upd" | jq_get '.callback_query.message.message_id')
+        log_info "CAPTCHA: user=$from solved it, unmuting"
         unmute_member "$chat" "$target" >/dev/null
         delete_message "$chat" "$mid" >/dev/null
         answer_cbq "$cbid" "Verified ✅ — welcome!"
       else
+        log_info "CAPTCHA: user=$from tried to click button for target=$target"
         answer_cbq "$cbid" "This button isn't for you."
       fi ;;
     *) answer_cbq "$cbid" "" ;;
