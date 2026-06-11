@@ -10,8 +10,6 @@ handle_new_members() {
 
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
 
-    [[ -n $user ]] && user_save "$uid" "$user"
-
     if (( CAPTCHA_ENABLED )); then
       mute_member "$chat" "$uid" >/dev/null
       local kb='{"inline_keyboard":[[{"text":"✅ I am human","callback_data":"captcha:'"$uid"'"}]]}'
@@ -35,4 +33,12 @@ handle_left_member() {
 handle_join_request() {
     # Optional: handle join requests
     :
+}
+
+handle_chat_member() {
+  local upd=$1
+  local key=$([[ $(print -r -- "$upd" | jq 'has("chat_member")') == true ]] && print -r -- "chat_member" || print -r -- "my_chat_member")
+  local uid=$(print -r -- "$upd" | jq_get ".${key}.new_chat_member.user.id")
+  local user=$(print -r -- "$upd" | jq_get ".${key}.new_chat_member.user.username")
+  [[ -n $uid && -n $user ]] && user_save "$uid" "$user"
 }
