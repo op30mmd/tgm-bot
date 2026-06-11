@@ -6,6 +6,8 @@ handle_new_members() {
     local uid=$(print -r -- "$m" | jq_get '.id')
     local name=$(print -r -- "$m" | jq_get '.first_name')
     local user=$(print -r -- "$m" | jq_get '.username')
+    [[ -n $user ]] && user_save "$uid" "$user"
+
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
 
     [[ -n $user ]] && user_save "$uid" "$user"
