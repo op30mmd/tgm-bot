@@ -66,8 +66,19 @@ test_user_resolve() {
     user_save "123" "Alice"
     [[ $(user_resolve "@Alice") == "123" ]] || return 1
     [[ $(user_resolve "123") == "123" ]] || return 1
+    [[ $(user_resolve "@alice") == "123" ]] || return 1
     [[ $(user_resolve "@Bob") == "" ]] || return 1
     echo "test_user_resolve passed"
+}
+
+test_word_splitting() {
+    local text="/mute @user 10m"
+    local words; words=( ${(z)text} )
+    [[ ${#words} == 3 ]] || return 1
+    [[ ${words[1]} == "/mute" ]] || return 1
+    [[ ${words[2]} == "@user" ]] || return 1
+    [[ ${words[3]} == "10m" ]] || return 1
+    echo "test_word_splitting passed"
 }
 
 test_json_str
@@ -76,3 +87,4 @@ test_is_owner
 test_store
 test_html_esc
 test_user_resolve
+test_word_splitting
