@@ -11,6 +11,7 @@ handle_new_members() {
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
 
     if (( CAPTCHA_ENABLED )); then
+      log_info "CAPTCHA: starting for user=$uid chat=$chat"
       mute_member "$chat" "$uid" >/dev/null
       local kb='{"inline_keyboard":[[{"text":"✅ I am human","callback_data":"captcha:'"$uid"'"}]]}'
       local resp=$(send_message "$chat" "👋 Welcome <b>$(html_esc "${name}")</b>! Tap the button within ${CAPTCHA_TIMEOUT}s to chat." HTML "$kb")
@@ -19,7 +20,9 @@ handle_new_members() {
         local mem=$(get_member "$chat" "$uid")
         local st=$(print -r -- "$mem" | jq_get '.result.status')
         local can_send=$(print -r -- "$mem" | jq_get '.result.can_send_messages')
+        log_info "CAPTCHA: timeout check user=$uid chat=$chat status=$st can_send=$can_send"
         if [[ $st == "restricted" && $can_send == "false" ]]; then
+          log_info "CAPTCHA: user=$uid failed to solve, kicking"
           kick_member "$chat" "$uid" >/dev/null
           delete_message "$chat" "$mid" >/dev/null
         fi ) &
