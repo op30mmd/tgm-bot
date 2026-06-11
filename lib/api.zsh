@@ -37,24 +37,24 @@ send_message() {  # send_message <chat_id> <text> [parse_mode] [reply_markup_jso
   tg_call sendMessage "${args[@]}"
 }
 
-delete_message() { tg_call deleteMessage -d "chat_id=$1" -d "message_id=$2"; }
+delete_message() { tg_call deleteMessage -d "chat_id=$1" -d "message_id=$2" >/dev/null; }
 
 ban_member() {    # ban_member <chat> <user> [until_unix]
   tg_call banChatMember -d "chat_id=$1" -d "user_id=$2" \
-    ${3:+-d "until_date=$3"} -d "revoke_messages=true"
+    ${3:+-d "until_date=$3"} -d "revoke_messages=true" >/dev/null
 }
 
-unban_member() { tg_call unbanChatMember -d "chat_id=$1" -d "user_id=$2" -d "only_if_banned=true"; }
+unban_member() { tg_call unbanChatMember -d "chat_id=$1" -d "user_id=$2" -d "only_if_banned=true" >/dev/null; }
 
 mute_member() {   # mute_member <chat> <user> [until_unix]
   tg_call restrictChatMember -d "chat_id=$1" -d "user_id=$2" \
-    --data-urlencode "permissions=$(perms_json 0)" ${3:+-d "until_date=$3"}
+    --data-urlencode "permissions=$(perms_json 0)" ${3:+-d "until_date=$3"} >/dev/null
 }
 
 unmute_member() {
   # unbanChatMember with only_if_banned=false (default) lifts ALL restrictions
   # and restores status to "member". This is more reliable than restrictChatMember.
-  tg_call unbanChatMember -d "chat_id=$1" -d "user_id=$2" -d "only_if_banned=false"
+  tg_call unbanChatMember -d "chat_id=$1" -d "user_id=$2" -d "only_if_banned=false" >/dev/null
 }
 
 kick_member() {   # ban then immediately unban = kick (can rejoin)
@@ -62,4 +62,4 @@ kick_member() {   # ban then immediately unban = kick (can rejoin)
 }
 
 get_member()   { tg_call getChatMember -d "chat_id=$1" -d "user_id=$2"; }
-answer_cbq()   { tg_call answerCallbackQuery -d "callback_query_id=$1" --data-urlencode "text=${2:-}"; }
+answer_cbq()   { tg_call answerCallbackQuery -d "callback_query_id=$1" --data-urlencode "text=${2:-}" >/dev/null; }
