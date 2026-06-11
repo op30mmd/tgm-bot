@@ -2,8 +2,8 @@
 
 _store_init() {
   mkdir -p "$DATA_DIR"
-  [[ -f $DATA_DIR/warnings.json ]] || echo '{}' > $DATA_DIR/warnings.json
-  [[ -f $DATA_DIR/settings.json ]] || echo '{}' > $DATA_DIR/settings.json
+  [[ -f $DATA_DIR/warnings.json ]] || print -r -- '{}' > $DATA_DIR/warnings.json
+  [[ -f $DATA_DIR/settings.json ]] || print -r -- '{}' > $DATA_DIR/settings.json
 }
 
 # Atomic jq update: _store_update <file> <jq-filter> [jq-args...]
