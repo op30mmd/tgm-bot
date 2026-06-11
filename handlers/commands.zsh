@@ -25,6 +25,8 @@ cmd_help() {
 /warn [reason] - Warn user (reply)
 /unwarn - Reset warnings (reply)
 /settings &lt;key&gt; &lt;value&gt; - Set chat settings
+/addword &lt;word&gt; - Block a word
+/delword &lt;word&gt; - Unblock a word
 
 Note: To resolve a @username, I must have seen them in the group or they must have a public profile."
     send_message "$chat" "$msg"
@@ -153,6 +155,47 @@ cmd_settings() {
     send_message "$chat" "✅ Set <b>$(html_esc "$key")</b> to <code>$(html_esc "$val")</code>."
 }
 
+cmd_addword() {
+  local chat=$1 actor=$2; shift 2
+  can_moderate "$chat" "$actor" || return
+  local word="${(j: :)@}"
+  word=${word:l}
+  [[ -z $word ]] && { send_message "$chat" "Usage: /addword &lt;word&gt;"; return; }
+  [[ $word == *,* ]] && { send_message "$chat" "❌ Words cannot contain commas."; return; }
+
+  local bad=$(setting_get "$chat" "banned_words")
+  local words; words=( ${(s:,:)bad} )
+  if [[ ${words[(r)$word]} == $word ]]; then
+    send_message "$chat" "<code>$(html_esc "$word")</code> is already in the list."
+    return
+  fi
+
+  words+=$word
+  setting_set "$chat" "banned_words" "${(j:,:)words}"
+  send_message "$chat" "✅ Added <code>$(html_esc "$word")</code> to blocked words."
+  audit "$chat" "ADD_WORD" "$actor" "chat" "$word"
+}
+
+cmd_delword() {
+  local chat=$1 actor=$2; shift 2
+  can_moderate "$chat" "$actor" || return
+  local word="${(j: :)@}"
+  word=${word:l}
+  [[ -z $word ]] && { send_message "$chat" "Usage: /delword &lt;word&gt;"; return; }
+
+  local bad=$(setting_get "$chat" "banned_words")
+  local words; words=( ${(s:,:)bad} )
+  if [[ ${words[(r)$word]} != $word ]]; then
+    send_message "$chat" "<code>$(html_esc "$word")</code> is not in the list."
+    return
+  fi
+
+  words=( ${words:#$word} )
+  setting_set "$chat" "banned_words" "${(j:,:)words}"
+  send_message "$chat" "✅ Removed <code>$(html_esc "$word")</code> from blocked words."
+  audit "$chat" "DEL_WORD" "$actor" "chat" "$word"
+}
+
 handle_message() {
   local upd=$1
   local chat=$(print -r -- "$upd" | jq_get '.message.chat.id')
@@ -184,6 +227,8 @@ handle_message() {
     warn)                  cmd_warn     "$chat" "$uid" "$upd" "${words[@]:1}" ;;
     unwarn)                cmd_unwarn   "$chat" "$uid" "$upd" "${words[@]:1}" ;;
     settings)              cmd_settings "$chat" "$uid" "$args_str" ;;
+    addword)               cmd_addword  "$chat" "$uid" "${words[@]:1}" ;;
+    delword)               cmd_delword  "$chat" "$uid" "${words[@]:1}" ;;
     *) : ;;  # unknown command: ignore
   esac
 }
