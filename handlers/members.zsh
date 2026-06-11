@@ -5,7 +5,10 @@ handle_new_members() {
   print -r -- "$upd" | jq -c '.message.new_chat_members[]' | while IFS= read -r m; do
     local uid=$(print -r -- "$m" | jq_get '.id')
     local name=$(print -r -- "$m" | jq_get '.first_name')
+    local user=$(print -r -- "$m" | jq_get '.username')
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
+
+    [[ -n $user ]] && user_save "$uid" "$user"
 
     if (( CAPTCHA_ENABLED )); then
       mute_member "$chat" "$uid" >/dev/null

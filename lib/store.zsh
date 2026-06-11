@@ -4,6 +4,7 @@ _store_init() {
   mkdir -p "$DATA_DIR"
   [[ -f $DATA_DIR/warnings.json ]] || print -r -- '{}' > $DATA_DIR/warnings.json
   [[ -f $DATA_DIR/settings.json ]] || print -r -- '{}' > $DATA_DIR/settings.json
+  [[ -f $DATA_DIR/users.json ]]    || print -r -- '{}' > $DATA_DIR/users.json
 }
 
 # Atomic jq update: _store_update <file> <jq-filter> [jq-args...]
@@ -21,3 +22,17 @@ warn_reset() { _store_update $DATA_DIR/warnings.json --arg k "$1:$2" 'del(.[$k])
 # Per-chat setting get/set
 setting_get() { jq -r --arg c "$1" --arg k "$2" '.[$c][$k] // empty' $DATA_DIR/settings.json; }
 setting_set() { _store_update $DATA_DIR/settings.json --arg c "$1" --arg k "$2" --arg v "$3" '.[$c][$k] = $v'; }
+
+# Mapping @username or "id" to user_id
+user_save() { # user_save <id> <username_no_at>
+  [[ -z $2 ]] && return
+  _store_update $DATA_DIR/users.json --arg id "$1" --arg u "${2:l}" '.[$u] = $id'
+}
+user_resolve() { # user_resolve "@username" or "id" -> prints id
+  local input=${1#@}
+  if [[ $input == <-> ]]; then
+    print -r -- "$input"
+  else
+    jq -r --arg u "${input:l}" '.[$u] // empty' $DATA_DIR/users.json
+  fi
+}
