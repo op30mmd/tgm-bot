@@ -10,6 +10,8 @@ handle_new_members() {
 
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
 
+    [[ -n $user ]] && user_save "$uid" "$user"
+
     if (( CAPTCHA_ENABLED )); then
       mute_member "$chat" "$uid" >/dev/null
       local kb='{"inline_keyboard":[[{"text":"✅ I am human","callback_data":"captcha:'"$uid"'"}]]}'
