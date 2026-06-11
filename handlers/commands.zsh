@@ -24,7 +24,9 @@ cmd_help() {
 /unmute - Unmute user (reply)
 /warn [reason] - Warn user (reply)
 /unwarn - Reset warnings (reply)
-/settings &lt;key&gt; &lt;value&gt; - Set chat settings"
+/settings &lt;key&gt; &lt;value&gt; - Set chat settings
+
+Note: To act on a non-admin by username, they must have sent a message while I was in the group."
     send_message "$chat" "$msg"
 }
 
@@ -35,8 +37,8 @@ cmd_ban() {  # <chat> <actor> <upd> <args...>
   local target=$(target_from_reply "$upd")
   if [[ -z $target ]]; then
     [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1")
-    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found in my cache."; return; }
+    target=$(user_resolve "$1" "$chat")
+    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found in my cache (and isn't an admin)."; return; }
   fi
 
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't ban an admin."; return; }
@@ -53,7 +55,7 @@ cmd_unban() {
     local chat=$1 actor=$2; shift 2
     can_moderate "$chat" "$actor" || return
     [[ -z $1 ]] && { send_message "$chat" "Pass an id/username to unban."; return; }
-    local target=$(user_resolve "$1")
+    local target=$(user_resolve "$1" "$chat")
     [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     if unban_member "$chat" "$target" >/dev/null; then
         send_message "$chat" "🔓 Unbanned <code>$(html_esc "${target}")</code>."
@@ -67,7 +69,7 @@ cmd_kick() {
     local target=$(target_from_reply "$upd")
     if [[ -z $target ]]; then
         [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1")
+        target=$(user_resolve "$1" "$chat")
         [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     fi
     is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't kick an admin."; return; }
@@ -84,7 +86,7 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
   local dur_arg=$1
   if [[ -z $target ]]; then
     [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1")
+    target=$(user_resolve "$1" "$chat")
     [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     dur_arg=$2
   fi
@@ -104,7 +106,7 @@ cmd_unmute() {
     local target=$(target_from_reply "$upd")
     if [[ -z $target ]]; then
         [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1")
+        target=$(user_resolve "$1" "$chat")
         [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     fi
     if unmute_member "$chat" "$target" >/dev/null; then
@@ -120,7 +122,7 @@ cmd_warn() {  # <chat> <actor> <upd> <args...>
   local reason_idx=1
   if [[ -z $target ]]; then
     [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1")
+    target=$(user_resolve "$1" "$chat")
     [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     reason_idx=2
   fi
@@ -150,7 +152,7 @@ cmd_unwarn() {
     local target=$(target_from_reply "$upd")
     if [[ -z $target ]]; then
         [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1")
+        target=$(user_resolve "$1" "$chat")
         [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
     fi
     warn_reset "$chat" "$target"
@@ -222,6 +224,8 @@ dispatch() {
   local upd=$1
   if   [[ $(print -r -- "$upd" | jq 'has("callback_query")') == true ]]; then
     handle_callback "$upd"
+  elif [[ $(print -r -- "$upd" | jq 'has("chat_member")') == true || $(print -r -- "$upd" | jq 'has("my_chat_member")') == true ]]; then
+    handle_chat_member "$upd"
   elif [[ $(print -r -- "$upd" | jq 'has("chat_join_request")') == true ]]; then
     handle_join_request "$upd"
   elif [[ $(print -r -- "$upd" | jq '.message.new_chat_members != null') == true ]]; then
