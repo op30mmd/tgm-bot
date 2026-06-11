@@ -18,7 +18,7 @@ html_esc() {
 # Build a ChatPermissions object. Pass 1 to allow everything, 0 to mute.
 perms_json() {
   local v=$1
-  local b=$([[ $v == 1 ]] && echo true || echo false)
+  local b=$([[ $v == 1 ]] && print -r -- true || print -r -- false)
   cat <<EOF
 {"can_send_messages":$b,"can_send_audios":$b,"can_send_documents":$b,"can_send_photos":$b,"can_send_videos":$b,"can_send_video_notes":$b,"can_send_voice_notes":$b,"can_send_polls":$b,"can_send_other_messages":$b,"can_add_web_page_previews":$b}
 EOF
