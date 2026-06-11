@@ -1,0 +1,21 @@
+# tg-modbot.service
+[Unit]
+Description=Telegram Group Management Bot (zsh)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tgbot
+WorkingDirectory=/opt/tg-modbot
+ExecStart=/usr/bin/zsh /opt/tg-modbot/bot.zsh
+Restart=always
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/tg-modbot/data
+
+[Install]
+WantedBy=multi-user.target
