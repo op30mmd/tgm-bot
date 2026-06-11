@@ -13,8 +13,8 @@ handle_callback() {
       if [[ $from == $target ]]; then
         local mid=$(print -r -- "$upd" | jq_get '.callback_query.message.message_id')
         log_info "CAPTCHA: user=$from solved it, unmuting"
-        unmute_member "$chat" "$target" >/dev/null
-        delete_message "$chat" "$mid" >/dev/null
+        unmute_member "$chat" "$target"
+        delete_message "$chat" "$mid"
         answer_cbq "$cbid" "Verified ✅ — welcome!"
       else
         log_info "CAPTCHA: user=$from tried to click button for target=$target"

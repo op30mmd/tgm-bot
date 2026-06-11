@@ -1,22 +1,22 @@
 # handlers/commands.zsh
 
-target_from_reply() {  # <upd>
+target_from_reply() { # <upd>
   print -r -- "$1" | jq_get '.message.reply_to_message.from.id'
 }
 
 parse_duration() {
   local d=$1 n=${1%[smhd]} unit=${1: -1}
-  [[ $d == <-> ]] && { print -- $(( d*60 )); return; }   # bare number = minutes
+  [[ $d == <-> ]] && { print -- $(( d*60 )); return; } # bare number = minutes
   case $unit in
-    s) print -- $n ;;  m) print -- $(( n*60 )) ;;
+    s) print -- $n ;; m) print -- $(( n*60 )) ;;
     h) print -- $(( n*3600 )) ;; d) print -- $(( n*86400 )) ;;
     *) print -- 0 ;;
   esac
 }
 
 cmd_help() {
-    local chat=$1
-    local msg="<b>Available commands:</b>
+  local chat=$1
+  local msg="<b>Available commands:</b>
 /ban - Ban user (reply)
 /unban &lt;id&gt; - Unban user
 /kick - Kick user (reply)
@@ -29,10 +29,10 @@ cmd_help() {
 /delword &lt;word&gt; - Unblock a word
 
 Note: To resolve a @username, I must have seen them in the group or they must have a public profile."
-    send_message "$chat" "$msg"
+  send_message "$chat" "$msg"
 }
 
-cmd_ban() {  # <chat> <actor> <upd> <args...>
+cmd_ban() { # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || { send_message "$chat" "⛔ You can't do that."; return; }
 
@@ -41,7 +41,7 @@ cmd_ban() {  # <chat> <actor> <upd> <args...>
 
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't ban an admin."; return; }
 
-  if ban_member "$chat" "$target" >/dev/null; then
+  if ban_member "$chat" "$target"; then
     send_message "$chat" "🔨 Banned <code>$(html_esc "${target}")</code>."
     audit "$chat" "BAN" "$actor" "$target" "$*"
   else
@@ -50,29 +50,29 @@ cmd_ban() {  # <chat> <actor> <upd> <args...>
 }
 
 cmd_unban() {
-    local chat=$1 actor=$2; shift 2
-    can_moderate "$chat" "$actor" || return
-    local target=$(resolve_target "" "$*")  # no upd context for unban usually
-    [[ -z $target ]] && { send_message "$chat" "Pass a numeric id or @username to unban."; return; }
-    if unban_member "$chat" "$target" >/dev/null; then
-        send_message "$chat" "🔓 Unbanned <code>$(html_esc "${target}")</code>."
-        audit "$chat" "UNBAN" "$actor" "$target" ""
-    fi
+  local chat=$1 actor=$2; shift 2
+  can_moderate "$chat" "$actor" || return
+  local target=$(resolve_target "" "$*") # no upd context for unban usually
+  [[ -z $target ]] && { send_message "$chat" "Pass a numeric id or @username to unban."; return; }
+  if unban_member "$chat" "$target"; then
+    send_message "$chat" "🔓 Unbanned <code>$(html_esc "${target}")</code>."
+    audit "$chat" "UNBAN" "$actor" "$target" ""
+  fi
 }
 
 cmd_kick() {
-    local chat=$1 actor=$2 upd=$3; shift 3
-    can_moderate "$chat" "$actor" || return
-    local target=$(resolve_target "$upd" "$*")
-    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
-    is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't kick an admin."; return; }
-    if kick_member "$chat" "$target" >/dev/null; then
-        send_message "$chat" "👢 Kicked <code>$(html_esc "${target}")</code>."
-        audit "$chat" "KICK" "$actor" "$target" ""
-    fi
+  local chat=$1 actor=$2 upd=$3; shift 3
+  can_moderate "$chat" "$actor" || return
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
+  is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't kick an admin."; return; }
+  if kick_member "$chat" "$target"; then
+    send_message "$chat" "👢 Kicked <code>$(html_esc "${target}")</code>."
+    audit "$chat" "KICK" "$actor" "$target" ""
+  fi
 }
 
-cmd_mute() {  # <chat> <actor> <upd> <args...>
+cmd_mute() { # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || return
   local target=$(resolve_target "$upd" "$*")
@@ -87,7 +87,7 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
   # Telegram treats until_date < 30s as permanent. Ensure at least 31s if timed.
   (( secs > 0 && secs < 31 )) && secs=31
   local until=0; (( secs > 0 )) && until=$(( $(date +%s) + secs ))
-  if mute_member "$chat" "$target" ${until:#0} >/dev/null; then
+  if mute_member "$chat" "$target" ${until:#0}; then
     local dur=$(html_esc "$dur_arg")
     send_message "$chat" "🔇 Muted <code>$(html_esc "${target}")</code>${${secs:#0}:+ for ${dur}}."
     audit "$chat" "MUTE" "$actor" "$target" "$*"
@@ -95,17 +95,17 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
 }
 
 cmd_unmute() {
-    local chat=$1 actor=$2 upd=$3; shift 3
-    can_moderate "$chat" "$actor" || return
-    local target=$(resolve_target "$upd" "$*")
-    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
-    if unmute_member "$chat" "$target" >/dev/null; then
-        send_message "$chat" "🔊 Unmuted <code>$(html_esc "${target}")</code>."
-        audit "$chat" "UNMUTE" "$actor" "$target" ""
-    fi
+  local chat=$1 actor=$2 upd=$3; shift 3
+  can_moderate "$chat" "$actor" || return
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
+  if unmute_member "$chat" "$target"; then
+    send_message "$chat" "🔊 Unmuted <code>$(html_esc "${target}")</code>."
+    audit "$chat" "UNMUTE" "$actor" "$target" ""
+  fi
 }
 
-cmd_warn() {  # <chat> <actor> <upd> <args...>
+cmd_warn() { # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || return
   local target=$(resolve_target "$upd" "$*")
@@ -119,7 +119,7 @@ cmd_warn() {  # <chat> <actor> <upd> <args...>
   local count=$(warn_add "$chat" "$target")
   if (( count >= WARN_LIMIT )); then
     case $WARN_ACTION in
-      ban)  ban_member  "$chat" "$target" ;;
+      ban) ban_member "$chat" "$target" ;;
       kick) kick_member "$chat" "$target" ;;
       mute) mute_member "$chat" "$target" ;;
     esac
@@ -134,27 +134,27 @@ cmd_warn() {  # <chat> <actor> <upd> <args...>
 }
 
 cmd_unwarn() {
-    local chat=$1 actor=$2 upd=$3; shift 3
-    can_moderate "$chat" "$actor" || return
-    local target=$(resolve_target "$upd" "$*")
-    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
-    warn_reset "$chat" "$target"
-    send_message "$chat" "✅ Reset warnings for <code>$(html_esc "${target}")</code>."
-    audit "$chat" "UNWARN" "$actor" "$target" ""
+  local chat=$1 actor=$2 upd=$3; shift 3
+  can_moderate "$chat" "$actor" || return
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
+  warn_reset "$chat" "$target"
+  send_message "$chat" "✅ Reset warnings for <code>$(html_esc "${target}")</code>."
+  audit "$chat" "UNWARN" "$actor" "$target" ""
 }
 
 cmd_settings() {
-    local chat=$1 actor=$2 args=$3
-    can_moderate "$chat" "$actor" || return
-    local key=${args%%[[:space:]]*}
-    local val=${args#*[[:space:]]}
-    [[ $key == $args ]] && val=""
-    if [[ -z $key ]]; then
-        send_message "$chat" "Usage: /settings &lt;key&gt; &lt;value&gt;"
-        return
-    fi
-    setting_set "$chat" "$key" "$val"
-    send_message "$chat" "✅ Set <b>$(html_esc "$key")</b> to <code>$(html_esc "$val")</code>."
+  local chat=$1 actor=$2 args=$3
+  can_moderate "$chat" "$actor" || return
+  local key=${args%%[[:space:]]*}
+  local val=${args#*[[:space:]]}
+  [[ $key == $args ]] && val=""
+  if [[ -z $key ]]; then
+    send_message "$chat" "Usage: /settings &lt;key&gt; &lt;value&gt;"
+    return
+  fi
+  setting_set "$chat" "$key" "$val"
+  send_message "$chat" "✅ Set <b>$(html_esc "$key")</b> to <code>$(html_esc "$val")</code>."
 }
 
 cmd_addword() {
@@ -201,8 +201,8 @@ cmd_delword() {
 handle_message() {
   local upd=$1
   local chat=$(print -r -- "$upd" | jq_get '.message.chat.id')
-  local uid=$(print -r -- "$upd"  | jq_get '.message.from.id')
-  local mid=$(print -r -- "$upd"  | jq_get '.message.message_id')
+  local uid=$(print -r -- "$upd" | jq_get '.message.from.id')
+  local mid=$(print -r -- "$upd" | jq_get '.message.message_id')
   local text=$(print -r -- "$upd" | jq_get '.message.text')
 
   # 0) Passive user harvest
@@ -220,24 +220,24 @@ handle_message() {
   args_str=${args_str# } # strip leading space if present
 
   case $cmd in
-    help|rules)            cmd_help     "$chat" ;;
-    ban)                   cmd_ban      "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    unban)                 cmd_unban    "$chat" "$uid" "${words[@]:1}" ;;
-    kick)                  cmd_kick     "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    mute)                  cmd_mute     "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    unmute)                cmd_unmute   "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    warn)                  cmd_warn     "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    unwarn)                cmd_unwarn   "$chat" "$uid" "$upd" "${words[@]:1}" ;;
-    settings)              cmd_settings "$chat" "$uid" "$args_str" ;;
-    addword)               cmd_addword  "$chat" "$uid" "${words[@]:1}" ;;
-    delword)               cmd_delword  "$chat" "$uid" "${words[@]:1}" ;;
-    *) : ;;  # unknown command: ignore
+    help|rules) cmd_help "$chat" ;;
+    ban) cmd_ban "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    unban) cmd_unban "$chat" "$uid" "${words[@]:1}" ;;
+    kick) cmd_kick "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    mute) cmd_mute "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    unmute) cmd_unmute "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    warn) cmd_warn "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    unwarn) cmd_unwarn "$chat" "$uid" "$upd" "${words[@]:1}" ;;
+    settings) cmd_settings "$chat" "$uid" "$args_str" ;;
+    addword) cmd_addword "$chat" "$uid" "${words[@]:1}" ;;
+    delword) cmd_delword "$chat" "$uid" "${words[@]:1}" ;;
+    *) : ;; # unknown command: ignore
   esac
 }
 
 dispatch() {
   local upd=$1
-  if   [[ $(print -r -- "$upd" | jq 'has("callback_query")') == true ]]; then
+  if [[ $(print -r -- "$upd" | jq 'has("callback_query")') == true ]]; then
     handle_callback "$upd"
   elif [[ $(print -r -- "$upd" | jq 'has("chat_member")') == true || $(print -r -- "$upd" | jq 'has("my_chat_member")') == true ]]; then
     handle_chat_member "$upd"

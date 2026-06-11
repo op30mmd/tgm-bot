@@ -12,7 +12,7 @@ handle_new_members() {
 
     if (( CAPTCHA_ENABLED )); then
       log_info "CAPTCHA: starting for user=$uid chat=$chat"
-      mute_member "$chat" "$uid" >/dev/null
+      mute_member "$chat" "$uid"
       local kb='{"inline_keyboard":[[{"text":"✅ I am human","callback_data":"captcha:'"$uid"'"}]]}'
       local resp=$(send_message "$chat" "👋 Welcome <b>$(html_esc "${name}")</b>! Tap the button within ${CAPTCHA_TIMEOUT}s to chat." HTML "$kb")
       local mid=$(print -r -- "$resp" | jq_get '.result.message_id')
@@ -23,8 +23,8 @@ handle_new_members() {
         log_info "CAPTCHA: timeout check user=$uid chat=$chat status=$st can_send=$can_send"
         if [[ $st == "restricted" && $can_send == "false" ]]; then
           log_info "CAPTCHA: user=$uid failed to solve, kicking"
-          kick_member "$chat" "$uid" >/dev/null
-          delete_message "$chat" "$mid" >/dev/null
+          kick_member "$chat" "$uid"
+          delete_message "$chat" "$mid"
         fi ) &
     else
       local wmsg=$(setting_get "$chat" "welcome"); : ${wmsg:="Welcome, %NAME%!"}
@@ -34,13 +34,13 @@ handle_new_members() {
 }
 
 handle_left_member() {
-    # Optional: handle when someone leaves
-    :
+  # Optional: handle when someone leaves
+  :
 }
 
 handle_join_request() {
-    # Optional: handle join requests
-    :
+  # Optional: handle join requests
+  :
 }
 
 handle_chat_member() {
