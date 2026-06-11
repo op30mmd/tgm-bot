@@ -33,17 +33,24 @@ run_filters() { # <chat> <uid> <mid> <text> <upd> -> return 1 to halt
   done
     fi
 
-  # --- Flood control (sliding window) ---
+  # --- Configurable Anti-Flood (sliding window) ---
+  local max=$(setting_get "$chat" "flood_max")
+  : ${max:=$FLOOD_MAX}
+  local win=$(setting_get "$chat" "flood_window")
+  : ${win:=$FLOOD_WINDOW}
+
+  if (( max > 0 && win > 0 )); then
     local now=$(date +%s) key="${chat}:${uid}" kept=()
-  for t in ${(s: :)FLOOD_TS[$key]}; do (( now - t < FLOOD_WINDOW )) && kept+=$t; done
-  kept+=$now
-  FLOOD_TS[$key]="${kept[*]}"
-    if (( ${#kept} > FLOOD_MAX )); then
-    mute_member "$chat" "$uid" $(( now + 300 )) # 5-min cooldown
+    for t in ${(s: :)FLOOD_TS[$key]}; do (( now - t < win )) && kept+=$t; done
+    kept+=$now
+    FLOOD_TS[$key]="${kept[*]}"
+    if (( ${#kept} > max )); then
+      mute_member "$chat" "$uid" $(( now + 300 )) # 5-min cooldown
       delete_message "$chat" "$mid"
-    send_message "$chat" "🌊 <code>$(html_esc "${uid}")</code> muted 5m for flooding."
-  audit "$chat" "FLOOD_MUTE" "bot" "$uid" ""
-  return 1
+      send_message "$chat" "🌊 <code>$(html_esc "${uid}")</code> muted 5m for flooding."
+      audit "$chat" "FLOOD_MUTE" "bot" "$uid" ""
+      return 1
     fi
+  fi
   return 0
 }
