@@ -2,6 +2,9 @@
 # test_logic.zsh
 
 source ./config.zsh
+# Override/populate for the test context
+BOT_OWNERS=( 11111111 22222222 )
+
 source ./lib/json.zsh
 source ./lib/log.zsh
 source ./lib/store.zsh

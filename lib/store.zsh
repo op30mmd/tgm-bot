@@ -10,7 +10,7 @@ _store_init() {
 # Atomic jq update: _store_update <file> <jq-filter> [jq-args...]
 _store_update() {
   local file=$1; shift
-  local tmp=$(mktemp)
+  local tmp=$(mktemp "${file}.XXXXXX")
   jq "$@" "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
