@@ -84,6 +84,8 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
 
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't mute an admin."; return; }
   local secs=$(parse_duration "$dur_arg")
+  # Telegram treats until_date < 30s as permanent. Ensure at least 31s if timed.
+  (( secs > 0 && secs < 31 )) && secs=31
   local until=0; (( secs > 0 )) && until=$(( $(date +%s) + secs ))
   if mute_member "$chat" "$target" ${until:#0} >/dev/null; then
     local dur=$(html_esc "$dur_arg")

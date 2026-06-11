@@ -13,11 +13,16 @@ handle_new_members() {
     if (( CAPTCHA_ENABLED )); then
       mute_member "$chat" "$uid" >/dev/null
       local kb='{"inline_keyboard":[[{"text":"✅ I am human","callback_data":"captcha:'"$uid"'"}]]}'
-      send_message "$chat" "👋 Welcome <b>$(html_esc "${name}")</b>! Tap the button within ${CAPTCHA_TIMEOUT}s to chat." HTML "$kb"
+      local resp=$(send_message "$chat" "👋 Welcome <b>$(html_esc "${name}")</b>! Tap the button within ${CAPTCHA_TIMEOUT}s to chat." HTML "$kb")
+      local mid=$(print -r -- "$resp" | jq_get '.result.message_id')
       ( sleep $CAPTCHA_TIMEOUT
-        # if still muted (didn't solve), kick
-        local st=$(get_member "$chat" "$uid" | jq_get '.result.status')
-        [[ $st == "restricted" ]] && kick_member "$chat" "$uid" >/dev/null ) &
+        local mem=$(get_member "$chat" "$uid")
+        local st=$(print -r -- "$mem" | jq_get '.result.status')
+        local can_send=$(print -r -- "$mem" | jq_get '.result.can_send_messages')
+        if [[ $st == "restricted" && $can_send == "false" ]]; then
+          kick_member "$chat" "$uid" >/dev/null
+          delete_message "$chat" "$mid" >/dev/null
+        fi ) &
     else
       local wmsg=$(setting_get "$chat" "welcome"); : ${wmsg:="Welcome, %NAME%!"}
       send_message "$chat" "${wmsg//\%NAME\%/$(html_esc "${name}")}"

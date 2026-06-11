@@ -10,7 +10,9 @@ handle_callback() {
     captcha:*)
       local target=${data#captcha:}
       if [[ $from == $target ]]; then
+        local mid=$(print -r -- "$upd" | jq_get '.callback_query.message.message_id')
         unmute_member "$chat" "$target" >/dev/null
+        delete_message "$chat" "$mid" >/dev/null
         answer_cbq "$cbid" "Verified ✅ — welcome!"
       else
         answer_cbq "$cbid" "This button isn't for you."
