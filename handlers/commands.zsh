@@ -18,13 +18,13 @@ cmd_help() {
     local chat=$1
     local msg="<b>Available commands:</b>
 /ban - Ban user (reply)
-/unban <id> - Unban user
+/unban &lt;id&gt; - Unban user
 /kick - Kick user (reply)
 /mute [duration] - Mute user (reply)
 /unmute - Unmute user (reply)
 /warn [reason] - Warn user (reply)
 /unwarn - Reset warnings (reply)
-/settings <key> <value> - Set chat settings"
+/settings &lt;key&gt; &lt;value&gt; - Set chat settings"
     send_message "$chat" "$msg"
 }
 
@@ -136,7 +136,7 @@ cmd_settings() {
     local val=${args#*[[:space:]]}
     [[ $key == $args ]] && val=""
     if [[ -z $key ]]; then
-        send_message "$chat" "Usage: /settings <key> <value>"
+        send_message "$chat" "Usage: /settings &lt;key&gt; &lt;value&gt;"
         return
     fi
     setting_set "$chat" "$key" "$val"
