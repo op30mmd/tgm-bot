@@ -26,7 +26,7 @@ cmd_help() {
 /unwarn - Reset warnings (reply)
 /settings &lt;key&gt; &lt;value&gt; - Set chat settings
 
-Note: To act on a non-admin by username, they must have sent a message while I was in the group."
+Note: To resolve a @username, I must have seen them in the group or they must have a public profile."
     send_message "$chat" "$msg"
 }
 
@@ -34,12 +34,8 @@ cmd_ban() {  # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || { send_message "$chat" "⛔ You can't do that."; return; }
 
-  local target=$(target_from_reply "$upd")
-  if [[ -z $target ]]; then
-    [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1" "$chat")
-    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found in my cache (and isn't an admin)."; return; }
-  fi
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user. Reply to them or use a numeric id."; return; }
 
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't ban an admin."; return; }
 
@@ -54,9 +50,8 @@ cmd_ban() {  # <chat> <actor> <upd> <args...>
 cmd_unban() {
     local chat=$1 actor=$2; shift 2
     can_moderate "$chat" "$actor" || return
-    [[ -z $1 ]] && { send_message "$chat" "Pass an id/username to unban."; return; }
-    local target=$(user_resolve "$1" "$chat")
-    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
+    local target=$(resolve_target "" "$*")  # no upd context for unban usually
+    [[ -z $target ]] && { send_message "$chat" "Pass a numeric id or @username to unban."; return; }
     if unban_member "$chat" "$target" >/dev/null; then
         send_message "$chat" "🔓 Unbanned <code>$(html_esc "${target}")</code>."
         audit "$chat" "UNBAN" "$actor" "$target" ""
@@ -66,12 +61,8 @@ cmd_unban() {
 cmd_kick() {
     local chat=$1 actor=$2 upd=$3; shift 3
     can_moderate "$chat" "$actor" || return
-    local target=$(target_from_reply "$upd")
-    if [[ -z $target ]]; then
-        [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1" "$chat")
-        [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
-    fi
+    local target=$(resolve_target "$upd" "$*")
+    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
     is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't kick an admin."; return; }
     if kick_member "$chat" "$target" >/dev/null; then
         send_message "$chat" "👢 Kicked <code>$(html_esc "${target}")</code>."
@@ -82,14 +73,13 @@ cmd_kick() {
 cmd_mute() {  # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || return
-  local target=$(target_from_reply "$upd")
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
+
+  # Find duration: if we used an arg for target, duration is $2, else $1
   local dur_arg=$1
-  if [[ -z $target ]]; then
-    [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1" "$chat")
-    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
-    dur_arg=$2
-  fi
+  [[ $(print -r -- "$upd" | jq_get '.message.reply_to_message') == "" ]] && dur_arg=$2
+
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't mute an admin."; return; }
   local secs=$(parse_duration "$dur_arg")
   local until=0; (( secs > 0 )) && until=$(( $(date +%s) + secs ))
@@ -103,12 +93,8 @@ cmd_mute() {  # <chat> <actor> <upd> <args...>
 cmd_unmute() {
     local chat=$1 actor=$2 upd=$3; shift 3
     can_moderate "$chat" "$actor" || return
-    local target=$(target_from_reply "$upd")
-    if [[ -z $target ]]; then
-        [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1" "$chat")
-        [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
-    fi
+    local target=$(resolve_target "$upd" "$*")
+    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
     if unmute_member "$chat" "$target" >/dev/null; then
         send_message "$chat" "🔊 Unmuted <code>$(html_esc "${target}")</code>."
         audit "$chat" "UNMUTE" "$actor" "$target" ""
@@ -118,14 +104,11 @@ cmd_unmute() {
 cmd_warn() {  # <chat> <actor> <upd> <args...>
   local chat=$1 actor=$2 upd=$3; shift 3
   can_moderate "$chat" "$actor" || return
-  local target=$(target_from_reply "$upd")
+  local target=$(resolve_target "$upd" "$*")
+  [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
+
   local reason_idx=1
-  if [[ -z $target ]]; then
-    [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-    target=$(user_resolve "$1" "$chat")
-    [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
-    reason_idx=2
-  fi
+  [[ $(print -r -- "$upd" | jq_get '.message.reply_to_message') == "" ]] && reason_idx=2
   local reason="${(j: :)@[reason_idx,-1]}"
   is_owner "$target" || is_chat_admin "$chat" "$target" && { send_message "$chat" "🛡️ Can't warn an admin."; return; }
 
@@ -149,12 +132,8 @@ cmd_warn() {  # <chat> <actor> <upd> <args...>
 cmd_unwarn() {
     local chat=$1 actor=$2 upd=$3; shift 3
     can_moderate "$chat" "$actor" || return
-    local target=$(target_from_reply "$upd")
-    if [[ -z $target ]]; then
-        [[ -z $1 ]] && { send_message "$chat" "Reply to a user or pass an id/username."; return; }
-        target=$(user_resolve "$1" "$chat")
-        [[ -z $target ]] && { send_message "$chat" "User <code>$(html_esc "$1")</code> not found."; return; }
-    fi
+    local target=$(resolve_target "$upd" "$*")
+    [[ -z $target ]] && { send_message "$chat" "Couldn't resolve that user."; return; }
     warn_reset "$chat" "$target"
     send_message "$chat" "✅ Reset warnings for <code>$(html_esc "${target}")</code>."
     audit "$chat" "UNWARN" "$actor" "$target" ""
@@ -180,20 +159,9 @@ handle_message() {
   local uid=$(print -r -- "$upd"  | jq_get '.message.from.id')
   local mid=$(print -r -- "$upd"  | jq_get '.message.message_id')
   local text=$(print -r -- "$upd" | jq_get '.message.text')
-  local user=$(print -r -- "$upd" | jq_get '.message.from.username')
 
-  # 0) Learn user mapping
-  [[ -n $user ]] && user_save "$uid" "$user"
-  # Learn from reply
-  local r_uid=$(print -r -- "$upd" | jq_get '.message.reply_to_message.from.id')
-  local r_user=$(print -r -- "$upd" | jq_get '.message.reply_to_message.from.username')
-  [[ -n $r_uid && -n $r_user ]] && user_save "$r_uid" "$r_user"
-  # Learn from entities (mentions)
-  print -r -- "$upd" | jq -c '.message.entities[]? | select(.type=="text_mention")' | while read -r ent; do
-    local m_uid=$(print -r -- "$ent" | jq_get '.user.id')
-    local m_user=$(print -r -- "$ent" | jq_get '.user.username')
-    [[ -n $m_uid && -n $m_user ]] && user_save "$m_uid" "$m_user"
-  done
+  # 0) Passive user harvest
+  harvest_users "$upd"
 
   # 1) Run passive filters (may delete + return non-zero to stop)
   run_filters "$chat" "$uid" "$mid" "$text" "$upd" || return

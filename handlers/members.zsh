@@ -6,7 +6,7 @@ handle_new_members() {
     local uid=$(print -r -- "$m" | jq_get '.id')
     local name=$(print -r -- "$m" | jq_get '.first_name')
     local user=$(print -r -- "$m" | jq_get '.username')
-    [[ -n $user ]] && user_save "$uid" "$user"
+    cache_user "$uid" "$user"
 
     [[ $(print -r -- "$m" | jq_get '.is_bot') == true ]] && continue
 
@@ -40,5 +40,5 @@ handle_chat_member() {
   local key=$([[ $(print -r -- "$upd" | jq 'has("chat_member")') == true ]] && print -r -- "chat_member" || print -r -- "my_chat_member")
   local uid=$(print -r -- "$upd" | jq_get ".${key}.new_chat_member.user.id")
   local user=$(print -r -- "$upd" | jq_get ".${key}.new_chat_member.user.username")
-  [[ -n $uid && -n $user ]] && user_save "$uid" "$user"
+  cache_user "$uid" "$user"
 }

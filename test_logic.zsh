@@ -6,6 +6,7 @@ source ./lib/json.zsh
 source ./lib/log.zsh
 source ./lib/store.zsh
 source ./lib/perms.zsh
+source ./lib/resolve.zsh
 source ./handlers/commands.zsh
 source ./handlers/filters.zsh
 
@@ -63,11 +64,11 @@ test_html_esc() {
 test_user_resolve() {
     export DATA_DIR=$(mktemp -d)
     _store_init
-    user_save "123" "Alice"
-    [[ $(user_resolve "@Alice") == "123" ]] || return 1
-    [[ $(user_resolve "123") == "123" ]] || return 1
-    [[ $(user_resolve "@alice") == "123" ]] || return 1
-    [[ $(user_resolve "@Bob") == "" ]] || return 1
+    cache_user "123" "Alice"
+    [[ $(resolve_username "@Alice") == "123" ]] || return 1
+    [[ $(resolve_username "123") == "123" ]] || return 1
+    [[ $(resolve_username "@alice") == "123" ]] || return 1
+    [[ $(resolve_username "@Bob") == "" ]] || return 1
     echo "test_user_resolve passed"
 }
 
