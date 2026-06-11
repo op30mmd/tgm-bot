@@ -17,6 +17,7 @@ parse_duration() {
 cmd_help() {
   local chat=$1
   local msg="<b>Available commands:</b>
+/help or /rules - Display this help menu
 /ban - Ban user (reply)
 /unban &lt;id&gt; - Unban user
 /kick - Kick user (reply)
