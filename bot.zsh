@@ -16,9 +16,10 @@ while true; do
            -d "offset=${offset}" \
            --data-urlencode 'allowed_updates=["message","edited_message","callback_query","chat_member","chat_join_request"]') || { sleep 3; continue; }
 
-  # Iterate updates as compact JSON lines
-  print -r -- "$resp" | jq -c '.result[]?' | while IFS= read -r upd; do
-    offset=$(( $(print -r -- "$upd" | jq_get '.update_id') + 1 ))
-    dispatch "$upd"
+  # Extract the update ID and compact JSON string on a single line to avoid forks inside the loop
+  print -r -- "$resp" | jq -r '.result[]? | "\(.update_id) \(@json)"' | while read -r up_id raw_upd; do
+    [[ -z $up_id ]] && continue
+    offset=$(( up_id + 1 ))
+    dispatch "$raw_upd"
   done
 done

@@ -2,22 +2,22 @@
 typeset -gA FLOOD_TS # key "chat:user" -> space-separated unix timestamps
 
 run_filters() { # <chat> <uid> <mid> <text> <upd> -> return 1 to halt
-    local chat=$1 uid=$2 mid=$3 text=$4
+  local chat=$1 uid=$2 mid=$3 text=$4
   # never filter admins/owner
   can_moderate "$chat" "$uid" && return 0
 
   # --- Banned words ---
-    local bad=$(setting_get "$chat" "banned_words")
-    if [[ -n $bad ]]; then
+  local bad=$(setting_get "$chat" "banned_words")
+  if [[ -n $bad ]]; then
     local w
-  for w in ${(s:,:)bad}; do
-    if [[ ${text:l} == *${w:l}* ]]; then
+    for w in ${(s:,:)bad}; do
+      if [[ ${text:l} == *${w:l}* ]]; then
         delete_message "$chat" "$mid"
         local count=$(warn_add "$chat" "$uid")
 
         if (( count >= WARN_LIMIT )); then
           case $WARN_ACTION in
-            ban) ban_member "$chat" "$uid" ;;
+            ban)  ban_member  "$chat" "$uid" ;;
             kick) kick_member "$chat" "$uid" ;;
             mute) mute_member "$chat" "$uid" ;;
           esac
@@ -28,10 +28,10 @@ run_filters() { # <chat> <uid> <mid> <text> <upd> -> return 1 to halt
           send_message "$chat" "⚠️ Warned <code>$(html_esc "${uid}")</code> (${count}/${WARN_LIMIT}) for banned word."
           audit "$chat" "WARN" "bot" "$uid" "banned word: $w"
         fi
-  return 1
-    fi
-  done
-    fi
+        return 1
+      fi
+    done
+  fi
 
   # --- Configurable Anti-Flood (sliding window) ---
   local max=$(setting_get "$chat" "flood_max")

@@ -3,7 +3,11 @@
 # Record a username -> id mapping (lowercased key). No-op without a username.
 cache_user() {  # cache_user <id> <username>
   [[ -z $1 || $1 == null || -z $2 || $2 == null ]] && return
-  _store_update $DATA_DIR/users.json --arg u "${2:l}" --arg i "$1" '.[$u] = $i'
+  local u="${2:l}"
+  if [[ ${CACHE_USERS[$u]:-} != $1 ]]; then
+    CACHE_USERS[$u]=$1
+    ( _store_update $DATA_DIR/users.json --arg u "$u" --arg i "$1" '.[$u] = $i' ) &
+  fi
 }
 
 # Passively harvest every user we can see in an update, so the cache fills up.
@@ -31,7 +35,7 @@ resolve_username() {  # <@name|name> -> prints id or empty
   local u=${1#@};
   [[ $u == <-> ]] && { print -r -- "$u"; return; }
   u=${u:l}
-  local id=$(jq -r --arg u "$u" '.[$u] // empty' $DATA_DIR/users.json)
+  local id=${CACHE_USERS[$u]:-}
   if [[ -z $id ]]; then
     local resp=$(get_chat "@$u")
     if [[ $(print -r -- "$resp" | jq_get '.ok') == true ]]; then

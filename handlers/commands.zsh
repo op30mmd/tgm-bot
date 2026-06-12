@@ -238,17 +238,25 @@ handle_message() {
 
 dispatch() {
   local upd=$1
-  if [[ $(print -r -- "$upd" | jq 'has("callback_query")') == true ]]; then
-    handle_callback "$upd"
-  elif [[ $(print -r -- "$upd" | jq 'has("chat_member")') == true || $(print -r -- "$upd" | jq 'has("my_chat_member")') == true ]]; then
-    handle_chat_member "$upd"
-  elif [[ $(print -r -- "$upd" | jq 'has("chat_join_request")') == true ]]; then
-    handle_join_request "$upd"
-  elif [[ $(print -r -- "$upd" | jq '.message.new_chat_members != null') == true ]]; then
-    handle_new_members "$upd"
-  elif [[ $(print -r -- "$upd" | jq '.message.left_chat_member != null') == true ]]; then
-    handle_left_member "$upd"
-  elif [[ $(print -r -- "$upd" | jq 'has("message")') == true ]]; then
-    handle_message "$upd"
-  fi
+  # Resolve the update type in a single process execution
+  local type
+  type=$(print -r -- "$upd" | jq -r '
+    if has("callback_query") then "callback_query"
+    elif has("chat_member") then "chat_member"
+    elif has("my_chat_member") then "my_chat_member"
+    elif .message.chat_join_request != null then "chat_join_request"
+    elif .message.new_chat_members != null then "new_chat_members"
+    elif .message.left_chat_member != null then "left_chat_member"
+    elif has("message") then "message"
+    else "unknown" end
+  ')
+
+  case $type in
+    callback_query) handle_callback "$upd" ;;
+    chat_member|my_chat_member) handle_chat_member "$upd" ;;
+    chat_join_request) handle_join_request "$upd" ;;
+    new_chat_members) handle_new_members "$upd" ;;
+    left_chat_member) handle_left_member "$upd" ;;
+    message) handle_message "$upd" ;;
+  esac
 }
